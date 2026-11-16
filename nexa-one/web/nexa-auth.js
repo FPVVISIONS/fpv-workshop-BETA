@@ -157,6 +157,7 @@
   let user = session.get();
   const listeners = new Set();
   const setUser = (u, remember = true) => {
+    if (!u && user && provider.signOut) Promise.resolve().then(() => provider.signOut()).catch(() => {});   // best effort
     user = u;
     if (u) session.set(u, remember); else session.clear();
     syncAvatar();
@@ -174,11 +175,13 @@
     invalid: 'האימייל או הסיסמה שגויים',
     locked: (s) => `יותר מדי ניסיונות. נסו שוב בעוד ${s} שניות.`,
     nouser: 'לא נמצא חשבון עם האימייל הזה במכשיר',
-    'code-invalid': 'הקוד שגוי. בדקו ונסו שוב.',
+    'code-invalid': 'הקוד שגוי או שפג תוקפו. בדקו ונסו שוב.',
     'code-expired': 'תוקף הקוד פג. בקשו קוד חדש.',
     'wrong-current': 'הסיסמה שגויה',
     'same-password': 'הסיסמה החדשה זהה לנוכחית',
     unsupported: 'המכשיר לא תומך בהצפנה הנדרשת',
+    unconfirmed: 'צריך לאשר את כתובת האימייל. בדקו את תיבת הדואר (גם בספאם) ולחצו על הקישור.',
+    network: 'אין חיבור לשרת. בדקו את האינטרנט ונסו שוב.',
     generic: 'משהו השתבש. נסו שוב.',
   };
   const errText = (e) => (e && e.code === 'locked' ? MSG.locked(e.wait) : MSG[e && e.code] || MSG.generic);
@@ -459,6 +462,7 @@
     const remember = checkbox('לזכור אותי במכשיר הזה', true);
     const btn = primary('התחברות');
     const msg = h('div', { class: 'fa-msg' });
+    if (prefill.notice === 'confirm') msg.append(banner('info', `שלחנו מייל אימות אל ${prefill.email}. לחצו על הקישור שבו ואז התחברו.`));
     const form = h('form', { class: 'fa-form', novalidate: true },
       msg, email.wrap, pw.wrap,
       h('div', { class: 'fa-row fa-stagger' }, remember.wrap,
@@ -510,6 +514,10 @@
         closeGate(true);
         toast(`החשבון נוצר. ברוכים הבאים, ${u.name}!`);
       } catch (err) {
+        if (err.code === 'confirm') {                          // a confirmation e-mail was sent
+          replaceWith(() => signInScreen({ email: email.value.trim(), notice: 'confirm' }));
+          return;
+        }
         if (err.code === 'exists') {
           email.set(MSG.exists);
           msg.replaceChildren(banner('error', MSG.exists + ' ',
@@ -905,6 +913,7 @@
     AuthError,
   };
 
-  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot, { once: true });
-  else boot();
+  // DOMContentLoaded fires after all deferred scripts, so a provider script loaded after this one can register first.
+  if (doc.readyState === 'complete') boot();
+  else doc.addEventListener('DOMContentLoaded', boot, { once: true });
 })();

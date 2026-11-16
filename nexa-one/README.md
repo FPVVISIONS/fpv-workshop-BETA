@@ -75,6 +75,14 @@ password managers and Android autofill work. The app behind a sheet is made
 `inert` for screen readers. Esc and a focus trap are handled on desktop. All motion
 honours reduce-motion.
 
+### Real accounts with Supabase (new)
+
+`web/nexa-supabase.js` connects the same screens to **Supabase**: accounts online,
+real confirmation and reset emails, one login on every phone. Setup (about 15 minutes):
+**[ACCOUNTS-SETUP.md](ACCOUNTS-SETUP.md)**. Build with
+`--supabase-url … --supabase-anon-key …`. Tested through the real UI against a mock
+Supabase (`supabase/test/`, 33 checks); a real project hasn't been tried.
+
 ### Where accounts live and how to connect a real backend
 
 By default accounts are stored **on the device** (`localStorage`). Passwords are
@@ -179,6 +187,8 @@ web/
   nexa-fx.js      motion behaviour (no dependencies, ~20 KB unminified)
   nexa-auth.css   account screens
   nexa-auth.js    sign up / sign in / reset / account sheet (no dependencies)
+  nexa-config.js  account backend settings (empty = on-device demo accounts)
+  nexa-supabase.js  real accounts via Supabase (inactive until nexa-config.js is filled)
   nexa-guide.css  connection guide styles + illustration animations
   nexa-guide.js   first-time "connect your bottle" walkthrough
   index.html      original index.html + splash markup + the six tags
