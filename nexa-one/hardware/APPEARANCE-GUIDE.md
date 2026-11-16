@@ -112,22 +112,25 @@ darker or lighter than the sleeve. It should be hard to see in daylight.
 
 ```
  75  ─ vessel rests on the 4 mm top plate (opening Ø58)
- 65–75   aluminium cold block 40×40×10   ← touches the vessel bottom
- 61–65   Peltier 40×40×3.9               ← cold side up (test it, BUILD-GUIDE §4)
+ 65–75   aluminium cold block 40×40×10   ← flush with the plate when the bottle is seated
+ 61–65   Peltier 40×40×3.9               ← cold side up
  41–61   heatsink 40×40×20
  31–41   fan 40×40×10                     ← blows UP through the fins
-  3–31   free: board, buck converter, BMS, and the air intake
- 3–70    4 × 18650 stand in the cell cage around the stack (N / E / S / W)
+ 29.5–31 silicone clamp pads (6×6, 1.5 mm compressed) on the cradle feet
+  3–28   free: control board, buck converter, BMS, charger, and the air intake
+ 3–70    4 × 18650 stand in the cell cage around the stack
   0–3    lid with the fan grille, screwed to 4 bosses
 ```
 
-Air path: in through the lid grille and the low slots, up past the fan and the
-fins, out of the top seam. The seam is also what makes the dark line in the
-render.
+The stack hangs in four L-shaped corner cradles under the top plate. The silicone
+pads under it are the Peltier's clamp: seating the bottle squeezes them. Air
+comes in through the lid grille and the low slots, goes up past the fan and the
+fins, and leaves through the top seam (the dark line in the render).
 
-**Cells:** only flat-top, unprotected **65 mm** 18650s fit: the gap to the top plate
-is 0.8 mm. The stack's carrier (the part that holds it 28 mm above the lid) isn't
-modelled yet; it depends on your heatsink (PRINTING-GUIDE §5).
+**Cells:** only flat-top, unprotected **65 mm** 18650s fit: the gap to the top
+plate is 0.8 mm. The front two cells sit 5 mm to the side, which makes room for
+the display and the button. All of it was checked by script
+(`design/assembly_check.py`, no collisions); see PRINTING-GUIDE §5.
 
 ## 6. Order of assembly
 

@@ -17,9 +17,9 @@ a size and re-make them. The overall look and sizes are in
 |---|---|---|---|---|---|
 | Test: sleeve ring | `test_sleeve_ring.stl` | TPU 95A | 81 × 81 × 18 mm | 15 cm³ | checks TPU settings and the fit on your bottle |
 | Test: base slice | `test_base_slice.stl` | PETG | 90 × 90 × 24 mm | 20 cm³ | checks the wall, slots and that the lid fits |
-| Base | `base_shell.stl` | PETG or ASA | 90 × 90 × 75 mm | 70 cm³ | the satin base with display, button, USB-C, vents |
-| Lid | `base_lid.stl` | PETG or ASA | 83 × 83 × 3 mm | 15 cm³ | bottom plate with the fan grille, 4 × M3 |
-| Cell cage | `cell_cage.stl` | PETG | 82 × 82 × 38 mm | 16 cm³ | holds the 4 × 18650 |
+| Base | `base_shell.stl` | PETG or ASA | 90 × 90 × 75 mm | 71 cm³ | display pocket, button boss, USB-C, vents, **the stack cradle with clamp feet**, lid screw bosses |
+| Lid | `base_lid.stl` | PETG or ASA | 83 × 83 × 3 mm | 15 cm³ | bottom plate with the fan grille, 16 zip-tie slots, 4 × M3 |
+| Cell cage | `cell_cage.stl` | PETG | 72 × 67 × 38 mm | 14 cm³ | holds the 4 × 18650 (front two pockets shifted 5 mm); open at the back for the charger board |
 | **Sleeve B** (recommended) | `sleeve_B_210.stl` | **TPU 95A** | 88 × 88 × **210 mm** | 264 cm³ (≈ 320 g solid) | the body, 770 ml bottle |
 | Sleeve A (faithful) | `sleeve_A_262.stl` | **TPU 95A** | 88 × 88 × **262 mm** | 330 cm³ (≈ 400 g solid) | the body as rendered, 980 ml bottle |
 
@@ -80,35 +80,45 @@ window before spraying.
 
 ## 4. Putting the printed parts together
 
+The full build order is in [START-HERE.md](START-HERE.md) §7. For the printed parts:
+
 - **Lid:** 4 × M3 × 8 self-tapping screws into the bosses (the pilot holes are
   2.6 mm). Don't over-tighten; PETG strips.
-- **Display:** a 1 mm smoked acrylic window, glued on the flat pad behind the
-  window opening. The display module goes behind the pad, held with foam tape.
-  The pad is the flat face at 43.4 mm from the centre.
-- **Button:** 8 mm panel-mount button through the 8.2 mm hole. If it has a nut,
-  add a nut seat first (see §5).
+- **Display:** the flat pad has a 35.6 × 34 mm pocket open to the inside. The
+  module goes in from behind and is stuck with double-sided foam tape; its glass
+  shows through the 35 × 17.5 mm window. Measure your module first: if it isn't
+  about 35.4 × 33.5 mm, change `OLED_PCB` in `design/layout.py` and re-run
+  `base_shell.py`. A clear PET film over the window is optional.
+- **Button:** an 8 mm panel-mount button through the 8.2 mm hole; its nut tightens
+  against the flat boss inside.
+- **Stack cradle:** four L-shaped corner cradles hang from the top plate and hold
+  the 40 × 40 mm heatsink + fan. At the bottom of each is a foot for a **6 × 6 mm
+  silicone pad (3 mm thick)**. Seating the bottle compresses the pads and presses
+  the Peltier together; that's the clamp force. There are zip-tie windows in the
+  arms.
 - **Cells:** four flat-top **65 mm unprotected** 18650s, one in each pocket of
   the cage, taped with Kapton. **Protected 69 mm cells won't fit** (the gap to
-  the top plate is 0.8 mm). Connect them as 2S2P with nickel strip through the
-  slots in the pocket sides.
+  the top plate is 0.8 mm).
 - **Sleeve → base:** the body is not removable. Spread flexible food-safe
   silicone sealant on the top plate, seat the bottle, then push the sleeve over
   it down onto the base. The silicone also keeps condensation out.
 
-## 5. What is not modelled yet
+## 5. Does it all fit?
 
-These depend on the exact parts you buy, so I left them out rather than guess:
+I checked it by script. `design/assembly_check.py` places the printed parts and
+the real components at their nominal sizes: 4 cells (Ø18.6 × 65.2), the 40 × 40
+fan, heatsink, Peltier and block, the clamp pads, the OLED module and the button.
+It measures overlapping volume for all 145 pairs and finds **none**. With the
+cells rotated into place (`ROT = −42°` and the two front cells slid 5 mm),
+there is at least 0.75 mm of clearance around every cell, and 0.3 mm between the
+cage and the base wall.
 
-- **The Peltier stack carrier.** With a 75 mm base, the cold block has to touch
-  the bottle at the top, so the 44 mm stack (block, Peltier, heatsink, fan)
-  hangs with its **bottom about 28 mm above the lid**. It needs four legs from the lid
-  or posts from the top plate, sized for your heatsink. The 28 mm of free space
-  below it is where the board, buck converter and BMS go.
-- **Posts for your display module and PCB**, and a nut seat for your button.
+Those clearances are small, so print the test base slice first. If your cells
+are fatter, or a printer runs wide, open `design/layout.py`, adjust, and re-run
+the generators and the check.
 
-When the heatsink, fan, display and board arrive, measure them (length, width,
-hole positions) and send me the numbers: I'll add the carrier and mounts to
-`base_shell.py`.
+Nominal sizes aren't your parts' sizes. **Measure your display, button and BMS
+against the numbers in [START-HERE.md](START-HERE.md) before printing the base.**
 
 ## 6. Change a size
 
@@ -122,6 +132,7 @@ python3 base_shell.py stl             # base + lid
 python3 cell_cage.py stl
 python3 sleeve.py stl                 # sleeves A and B
 python3 test_pieces.py stl            # the two test pieces
+python3 assembly_check.py stl         # do all the parts fit together?
 ```
 
 For example, a slightly different bottle: change `VESSEL_OD` and `BORE_D` in

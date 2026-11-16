@@ -9,6 +9,9 @@ match the app's built-in simulator exactly. The same controls (cooling on/off,
 target 5–15 °C, battery saver) and the same data (water temperature, battery,
 cooling phase, session history) work with the real bottle.
 
+> **Building it? Start with [START-HERE.md](START-HERE.md)**: exact parts, wiring, flashing and setup in one place.
+> This file is the background and theory.
+>
 > **Making it look like the app?** Read **[APPEARANCE-GUIDE.md](APPEARANCE-GUIDE.md)** next.
 > It turns the app's bottle render into real dimensions, with a printable base
 > (`design/`). Two findings change this guide: the render's base is too short to
@@ -116,7 +119,7 @@ uses most of a charge.
   but don't rely on software alone during assembly.
 - **Lithium cells:** use genuine cells (Samsung 30Q, LG MJ1, Molicel P26A …),
   a **2S BMS with balancing**, a **fuse** (7.5 A) right at the pack, and a
-  **master switch** for storage and transport. Never solder directly onto cells;
+  **pack disconnect connector (XT30)** for storage and transport. Never solder directly onto cells;
   use a spot-welded pack or a holder rated for 5 A+.
 - **Water and electronics:** the cold side drops below the dew point, so
   **condensation will form**. Seal around the Peltier with foam gasket and
@@ -133,7 +136,7 @@ uses most of a charge.
 
 | # | Part | Example / notes | ≈ $ |
 |---|---|---|---|
-| 1 | Microcontroller | **ESP32-C3 SuperMini** (or Seeed XIAO ESP32-C3), BLE 5 | 3–6 |
+| 1 | Microcontroller | **ESP32-C3 SuperMini** only. (Not the Seeed XIAO ESP32-C3: it doesn't break out GPIO0/1, which the firmware uses.) | 3–6 |
 | 2 | Peltier module | **TEC1-12706**, 40×40 mm (run at ~7.4 V, not 12 V, for better efficiency) | 3 |
 | 3 | Cold block | Aluminium 40×40×10 mm (between Peltier and vessel bottom) | 3 |
 | 4 | Heatsink + fan | 40×40×20 mm+ aluminium heatsink + 40 mm **5 V** fan (0.1–0.2 A) | 6 |
@@ -148,8 +151,8 @@ uses most of a charge.
 | 13 | 5 V supply | **MP1584EN** buck module, set to 5.0 V (ESP32 + fan + OLED) | 2 |
 | 14 | Display | **1.3″ 128×64 blue OLED** (SH1106, I²C). Its 2:1 panel matches the bottle in the app; the firmware draws the same screen | 4 |
 | 15 | Button | 12 mm momentary push button (metal, waterproof if possible) | 2 |
-| 16 | Master switch | Small slide switch rated 5 A+ | 1 |
-| 17 | Resistors | 220 kΩ + 100 kΩ (battery sense), 10 kΩ + 20 kΩ (USB sense), 100 Ω + 100 kΩ (MOSFET gates), 100 nF caps | 1 |
+| 16 | Pack disconnect | XT30 connector pair in the pack lead (unplug for storage and transport) | 1 |
+| 17 | Resistors | 330 kΩ + 100 kΩ, 1 % (battery sense), 10 kΩ + 20 kΩ (USB sense), 100 Ω + 100 kΩ (MOSFET gates), 100 nF caps | 1 |
 | 18 | Vessel | **Thin-wall aluminium** bottle with a food-safe inner coating, flat bottom, **Ø73 mm outside** (see [APPEARANCE-GUIDE.md](APPEARANCE-GUIDE.md)) + sport cap | 10–18 |
 | 19 | Body sleeve | **TPU 95A**, printed (the app's ribbed, waisted body; also the insulation). About 320 g of filament, see [PRINTING-GUIDE.md](PRINTING-GUIDE.md) | 10 |
 | 20 | Base, lid, cell cage | Printed in PETG/ASA (`design/stl/`): vents, USB-C hole, button, OLED window | 3 |
@@ -161,7 +164,7 @@ uses most of a charge.
 
 ```
                     ┌──────────── 2S2P pack 6.4–8.4 V ───────────┐
- USB-C ─► 2S PD     │  BMS ── FUSE 7.5A ── MASTER SW ── VBAT+     │
+ USB-C ─► 2S PD     │  BMS ── FUSE 7.5A ── XT30 ── VBAT+     │
           charger ──┘                                    │        │
                                                          ├──► MP1584 buck ─► 5V ─┬─► ESP32-C3 "5V"
                                                          │                       ├─► fan (+)
@@ -169,7 +172,7 @@ uses most of a charge.
                                                          ├──► TEC (+) red wire
                                                          │      TEC (−) black ──► IRLB8721 drain
                                                          │                         source ─► GND
-                                                         └──► 220k ─┬─ 100k ─ GND   (battery sense)
+                                                         └──► 330k ─┬─ 100k ─ GND   (battery sense)
                                                                     └─► GPIO0  (+100 nF to GND)
 
  ESP32-C3 pin   →  connects to
@@ -179,8 +182,9 @@ uses most of a charge.
                    fan (−) → AO3400 drain; 1N4148 across the fan (band to +)
  GPIO5          ←  DS18B20 #1 data (water)    + 4.7 kΩ to 3V3
  GPIO10         ←  DS18B20 #2 data (heatsink) + 4.7 kΩ to 3V3
- GPIO0          ←  battery divider midpoint (max 2.63 V at 8.4 V)
- GPIO1          ←  USB-C VBUS → 10 kΩ → GPIO1 → 20 kΩ → GND   (charging detect)
+ GPIO0          ←  battery divider midpoint (1.95 V at 8.4 V)
+ GPIO1          ←  PC817 optocoupler collector (charging detect; see START-HERE.md §4.
+                   Don't use a resistor divider: a PD charger can negotiate 9–20 V)
  GPIO20         ←  button → GND  (internal pull-up)
  GPIO6 / GPIO7  ↔  OLED SDA / SCL;  OLED VCC → 3V3, GND → GND
  DS18B20 VCC    →  3V3,  GND → GND
@@ -244,7 +248,7 @@ g++ -std=c++17 -Wall -Wextra -I../nexa_one test_core.cpp -o test_core && ./test_
 2. *Library Manager*: install **NimBLE-Arduino 2.x**, **OneWire**,
    **DallasTemperature**, **U8g2**.
 3. Open `firmware/nexa_one/nexa_one.ino`. Select board **"ESP32C3 Dev Module"**
-   (or your XIAO/SuperMini) and set *USB CDC On Boot* → **Enabled**.
+   (the SuperMini is one of these) and set *USB CDC On Boot* → **Enabled**.
 4. Connect USB and click **Upload**. If it won't upload, hold **BOOT**, tap
    **RESET**, then release BOOT.
 

@@ -50,19 +50,20 @@ def dims(k=K, body_h=1.0, vessel_od=VESSEL_OD):
 
 
 def base_requirements():
-    """Smallest base for 4x18650 in printed pockets around a 40 mm square TEC stack."""
-    ring_r = TEC / 2 + CELL_GAP + CELL_D / 2            # cell centres from the axis (stack corner is further)
-    ring_r = max(ring_r, 30.3)
-    pocket_outer_r = CELL_D / 2 + CELL_GAP / 2 + CAGE_WALL
-    inner_r = ring_r + pocket_outer_r + CAGE_GAP
-    return dict(od=2 * (inner_r + WALL), h=CELL_L + 3 + 2 + PLATE, ring_r=ring_r,
+    """Smallest base for 4x18650 in printed pockets around a 40 mm square TEC stack (uses layout.py)."""
+    import layout as L
+    pocket_outer_r = CELL_D / 2 + CELL_GAP / 2 + 1.0                       # 1.0 mm pocket wall
+    shift = max(abs(v) for v in L.CELL_SHIFT.values())
+    reach = math.hypot(L.RING_R, shift) + pocket_outer_r                   # farthest point of a shifted pocket
+    inner_r = reach + 0.3                                                  # 0.3 mm print clearance to the wall
+    return dict(od=2 * (inner_r + WALL), h=CELL_L + 3 + 2 + PLATE, ring_r=L.RING_R,
                 pocket_outer_r=pocket_outer_r, stack_h=STACK_H)
 
 
 if __name__ == '__main__':
     need = base_requirements()
     print(f"Base needed (4x18650 in printed pockets + 40 mm TEC stack): Ø{need['od']:.1f} x {need['h']:.0f} mm "
-          f"(cell centres r={need['ring_r']:.1f}, pockets reach r={need['ring_r'] + need['pocket_outer_r']:.1f}; stack {need['stack_h']:.0f} mm tall)\n")
+          f"(cell centres r={need['ring_r']:.1f}, front pockets shifted sideways; stack {need['stack_h']:.0f} mm tall)\n")
     print(f"{'k':>6} {'base Ø':>7} {'base H(render)':>15} {'body Ø':>7} {'waist':>6} {'sleeve wall@waist':>18} {'fits Ø':>7} {'fits H':>7}")
     for k in (0.44, 0.46, 0.478, 0.50, 0.52):
         d = dims(k)

@@ -5,7 +5,7 @@
 Four upright pockets on the N/E/S/W axes (r = 30.3 mm from the centre) leave the
 middle free for the 40x40 Peltier stack. A thin arc rail at r = 31.5 ties the
 pockets together without touching the heatsink corners (28.3 mm out).
-Pockets are slotted on the side facing the centre so you can reach the nickel
+The rail is open between the two back pockets. Pockets are slotted on the side facing the centre so you can reach the nickel
 strip tabs and wire the pack. Orientation: +Z up; print as drawn.
 """
 import math
@@ -13,25 +13,29 @@ import sys
 
 import numpy as np
 import trimesh
+
+import layout as L
 from trimesh.creation import box, cylinder
 from trimesh.transformations import rotation_matrix, translation_matrix
 
 CELL_D = 18.6
 POCKET_ID = CELL_D + 0.4          # 19.0 — wrapped cell plus clearance
-POCKET_WALL = 1.2
-RING_R = 30.3                     # cell centres from the axis
+POCKET_WALL = 1.0
+RING_R = L.RING_R                 # cell centres from the axis
 POCKET_H = 38.0                   # cells stand 65 mm, the cradle holds the lower 38 mm
 FLOOR = 2.0                       # underside of each pocket; cells sit on it
-RAIL_R, RAIL_W, RAIL_H = 31.5, 2.4, 14.0
+RAIL_W, RAIL_H = 2.4, 14.0
+RAIL_R = L.RING_R + 1.2           # arc rail tying the pockets together
 SLOT_W = 9.0                      # opening on the inner side of each pocket for the strip tabs
 SEG = 64
+GAP_ANGLE = 135.0                 # local angle of the rail gap: faces the back after the layout rotation
+GAP_W = 20.0                      # a charger board up to ~18 mm wide passes through here
 
 
 def build():
     parts = []
     for a in (0, 90, 180, 270):
-        c, s = math.cos(math.radians(a)), math.sin(math.radians(a))
-        x, y = RING_R * c, RING_R * s
+        x, y = L.cell_local_xy(a)
         outer = cylinder(radius=POCKET_ID / 2 + POCKET_WALL, height=POCKET_H, sections=SEG)
         outer.apply_transform(translation_matrix((x, y, POCKET_H / 2)))
         parts.append(outer)
@@ -49,7 +53,7 @@ def build():
 
     # bores for the cells, closed by the floor
     for a in (0, 90, 180, 270):
-        x, y = RING_R * math.cos(math.radians(a)), RING_R * math.sin(math.radians(a))
+        x, y = L.cell_local_xy(a)
         bore = cylinder(radius=POCKET_ID / 2, height=POCKET_H, sections=SEG)
         bore.apply_transform(translation_matrix((x, y, FLOOR + POCKET_H / 2)))
         body = body.difference(bore, engine='manifold')
@@ -59,6 +63,12 @@ def build():
         slot.apply_transform(rotation_matrix(math.radians(a), (0, 0, 1)))
         slot.apply_transform(translation_matrix((x, y, 0)))
         body = body.difference(slot, engine='manifold')
+    # gap in the rail between the two back pockets, for the charger board to reach the USB-C port
+    gap = box(extents=(GAP_W, 10.0, RAIL_H + 4))
+    gap.apply_transform(translation_matrix((0, RAIL_R, RAIL_H / 2)))
+    gap.apply_transform(rotation_matrix(math.radians(GAP_ANGLE - 90.0), (0, 0, 1)))
+    body = body.difference(gap, engine='manifold')
+    body.apply_transform(rotation_matrix(math.radians(L.ROT), (0, 0, 1)))        # same rotation as the base layout
     return body
 
 

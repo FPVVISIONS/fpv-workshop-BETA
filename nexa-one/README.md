@@ -151,6 +151,12 @@ build order. The firmware draws the app's "bottle display" layout on a 1.3″ OL
 It also records two findings: the render's base is too short to hold the battery,
 and the vessel should be aluminium.
 
+## Build it: start here
+
+**[hardware/START-HERE.md](hardware/START-HERE.md)**: the board (ESP32-C3 SuperMini),
+the exact shopping list, wiring, flashing and configuring the firmware, bench
+tests and assembly, in one guide.
+
 ## How fast can it cool?
 
 [hardware/COOLING-SPEED.md](hardware/COOLING-SPEED.md): why 15 minutes isn't
@@ -179,9 +185,10 @@ web/
 hardware/
   BUILD-GUIDE.md  how to build the Peltier bottle and connect it
   firmware/       ESP32-C3 firmware (nexa_core.h is unit-tested: firmware/test)
+  START-HERE.md        the one guide to follow: parts, wiring, flashing, setup, assembly
   APPEARANCE-GUIDE.md  how to make it look like the app (dimensions, build order)
   PRINTING-GUIDE.md    what to print, settings, assembly
-  design/         fit_check.py, base_shell.py, cell_cage.py, sleeve.py, test_pieces.py (→ stl/), drawing.py
+  design/         fit_check.py, layout.py, base_shell.py, cell_cage.py, sleeve.py, test_pieces.py (→ stl/), assembly_check.py, drawing.py
   app-integration/ Bluetooth protocol + BleBottle transport for the app source
 icon/
   icon.js         the app icon as a single SVG generator

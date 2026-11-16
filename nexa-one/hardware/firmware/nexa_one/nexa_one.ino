@@ -1,20 +1,13 @@
 // =============================================================================
 //  NEXA ONE — bottle firmware (ESP32-C3)
 //
-//  Board:     ESP32-C3 SuperMini / Seeed XIAO ESP32-C3 (Arduino core 3.x)
+//  Board:     ESP32-C3 SuperMini (Arduino core 3.x). NOT the XIAO: it lacks GPIO0/1.
+//  Settings:  config.h (pins, display type, battery divider, names)
 //  Libraries: NimBLE-Arduino 2.x · OneWire · DallasTemperature · U8g2
 //  Logic:     nexa_core.h (unit-tested on a PC, see ../test)
 //  Protocol:  matches app-integration/nexa-protocol.js
 //
-//  Pin map (avoids the C3 strapping pins 2, 8, 9):
-//    GPIO3  → Peltier MOSFET gate  (PWM 25 kHz)
-//    GPIO4  → fan MOSFET gate
-//    GPIO5  ← DS18B20 water probe   (4.7 kΩ pull-up to 3V3)
-//    GPIO10 ← DS18B20 heatsink probe (4.7 kΩ pull-up to 3V3)
-//    GPIO0  ← battery divider 220 kΩ / 100 kΩ (8.4 V → 2.63 V)
-//    GPIO1  ← USB VBUS divider 10 kΩ / 20 kΩ (charging detect)
-//    GPIO20 ← push button to GND (internal pull-up)
-//    GPIO6/7  I2C SDA/SCL → 1.3" 128×64 OLED (same 2:1 shape as the app's bottle render)
+//  Serial monitor (115200): status | calib <volts> | target <5-15> | pair | help
 // =============================================================================
 #include <Arduino.h>
 #include <Wire.h>
@@ -23,17 +16,10 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <U8g2lib.h>
+#include "config.h"
 #include "nexa_core.h"
 
 using namespace nexa;
-
-// ------------------------------------------------------------------ pins
-constexpr int PIN_TEC = 3, PIN_FAN = 4, PIN_WATER = 5, PIN_HOT = 10;
-constexpr int PIN_BATT = 0, PIN_VBUS = 1, PIN_BUTTON = 20, PIN_SDA = 6, PIN_SCL = 7;
-constexpr float BATT_DIVIDER = (220.0f + 100.0f) / 100.0f;
-constexpr uint32_t TEC_PWM_HZ = 25000;     // above hearing; LC filter optional (see guide)
-constexpr uint8_t  TEC_PWM_BITS = 10;
-constexpr uint32_t PAIRING_WINDOW_MS = 120000;
 
 // --------------------------------------------------------------- globals
 Controller ctl;
@@ -41,9 +27,11 @@ Button button;
 Preferences prefs;
 OneWire owWater(PIN_WATER), owHot(PIN_HOT);
 DallasTemperature waterSensor(&owWater), hotSensor(&owHot);
-// 1.3" 128x64 blue OLED. Most are SH1106; if yours is SSD1306 use
-// U8G2_SSD1306_128X64_NONAME_F_HW_I2C instead.
+#if defined(OLED_SSD1306)
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+#else
 U8G2_SH1106_128X64_NONAME_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+#endif
 
 NimBLEServer* server = nullptr;
 NimBLECharacteristic *chState = nullptr, *chControl = nullptr, *chSessions = nullptr;
@@ -51,7 +39,8 @@ volatile bool bleConnected = false;
 bool paired = false;
 uint32_t pairingUntil = 0, identifyUntil = 0;
 
-float waterC = NAN, hotC = NAN, battVoltsEma = NAN;
+float waterC = NAN, hotC = NAN, battRawEma = NAN;   // battRawEma: pack volts before calibration
+float battCal = 1.0f;                                // calibration factor (saved in flash)
 uint8_t batteryPct = 0, healthPct = 100;
 float cyclesUsed = 0;                      // charge cycles, for a rough health figure
 bool charging = false;
@@ -60,6 +49,7 @@ bool charging = false;
 portMUX_TYPE cmdMux = portMUX_INITIALIZER_UNLOCKED;
 uint8_t cmdBuf[8][8]; uint8_t cmdLen[8]; volatile int cmdHead = 0, cmdTail = 0;
 
+static float battVolts() { return battRawEma * battCal; }
 static uint32_t uptimeS() { return (uint32_t)(esp_timer_get_time() / 1000000ULL); }
 static Inputs inputs() { return Inputs{waterC, hotC, batteryPct, charging, uptimeS()}; }
 
@@ -90,7 +80,7 @@ class ControlCB : public NimBLECharacteristicCallbacks {
 static bool shouldAdvertise() { return paired || millis() < pairingUntil; }
 
 static void setupBle() {
-  NimBLEDevice::init("NEXA ONE");
+  NimBLEDevice::init(DEVICE_NAME);
   NimBLEDevice::setPower(3);               // dBm — plenty for a bottle-to-phone link
   server = NimBLEDevice::createServer();
   server->setCallbacks(new ServerCB());
@@ -102,7 +92,7 @@ static void setupBle() {
   svc->start();
   NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
   adv->addServiceUUID(NEXA_SERVICE_UUID);
-  adv->setName("NEXA ONE");
+  adv->setName(DEVICE_NAME);
   adv->enableScanResponse(true);
 }
 
@@ -174,9 +164,9 @@ static void readSensors() {
   }
 
   float v = analogReadMilliVolts(PIN_BATT) / 1000.0f * BATT_DIVIDER;
-  battVoltsEma = isnan(battVoltsEma) ? v : battVoltsEma + 0.05f * (v - battVoltsEma);
-  charging = digitalRead(PIN_VBUS) == HIGH;
-  uint8_t pct = packVoltsToPercent(battVoltsEma);
+  battRawEma = isnan(battRawEma) ? v : battRawEma + 0.05f * (v - battRawEma);
+  charging = (digitalRead(PIN_VBUS) == LOW) == CHARGE_ACTIVE_LOW;
+  uint8_t pct = packVoltsToPercent(battVolts(), BATT_CELLS_SERIES);
   // Voltage sags under the Peltier's load: only let the % fall while
   // discharging and rise while charging, so it never jumps around.
   if (charging && pct > batteryPct) { cyclesUsed += (pct - batteryPct) / 100.0f; batteryPct = pct; }
@@ -261,23 +251,63 @@ static void drawDisplay() {
   oled.sendBuffer();
 }
 
+// ---------------------------------------------------------------- serial
+static void logStatus() {
+  Serial.printf("[nexa] water=%.1fC heatsink=%.1fC batt=%u%% (%.2fV raw %.2fV cal %.3f) charging=%d  "
+                "cooling=%d phase=%d target=%d saver=%d tec=%.0f%% fan=%d  ble=%d paired=%d%s%s\n",
+                waterC, hotC, batteryPct, battVolts(), battRawEma, battCal, charging, ctl.coolingOn(), (int)ctl.phase(),
+                ctl.target(), ctl.saver(), ctl.duty() * 100.0f, digitalRead(PIN_FAN), bleConnected, paired,
+                ctl.overheat() ? "  OVERHEAT" : "", ctl.sensorFault() ? "  SENSOR-FAULT" : "");
+}
+
+static void handleSerial() {
+  static char buf[48];
+  static int n = 0;
+  while (Serial.available()) {
+    char c = (char)Serial.read();
+    if (c == '\r') continue;
+    if (c != '\n') { if (n < (int)sizeof buf - 1) buf[n++] = c; continue; }
+    buf[n] = 0; n = 0;
+    if (!strcmp(buf, "status")) {
+      logStatus();
+    } else if (!strncmp(buf, "calib ", 6)) {
+      float volts = atof(buf + 6);
+      if (volts > 5.0f && volts < 9.0f && battRawEma > 1.0f) {
+        battCal = volts / battRawEma;
+        prefs.putFloat("batcal", battCal);
+        Serial.printf("[nexa] battery calibrated: factor %.3f (pack now %.2f V)\n", battCal, battVolts());
+      } else Serial.println("[nexa] usage: calib <pack volts from a multimeter, 5-9>");
+    } else if (!strncmp(buf, "target ", 7)) {
+      ctl.setTarget(atoi(buf + 7));
+      prefs.putUChar("target", (uint8_t)ctl.target());
+      Serial.printf("[nexa] target %d C\n", ctl.target());
+    } else if (!strcmp(buf, "pair")) {
+      pairingUntil = millis() + PAIRING_WINDOW_MS;
+      Serial.println("[nexa] pairing mode on for 2 minutes");
+    } else {
+      Serial.println("[nexa] commands: status | calib <volts> | target <5-15> | pair");
+    }
+  }
+}
+
 // ------------------------------------------------------------------ main
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_FAN, OUTPUT);  digitalWrite(PIN_FAN, LOW);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
-  pinMode(PIN_VBUS, INPUT);
+  pinMode(PIN_VBUS, INPUT_PULLUP);
   ledcAttach(PIN_TEC, TEC_PWM_HZ, TEC_PWM_BITS);
   ledcWrite(PIN_TEC, 0);
   analogReadResolution(12);
+  prefs.begin("nexa", false);
+  battCal = prefs.getFloat("batcal", 1.0f);
   // Initial battery reading (averaged) so the gauge starts at the real level.
   float sum = 0;
   for (int i = 0; i < 16; i++) { sum += analogReadMilliVolts(PIN_BATT); delay(2); }
-  battVoltsEma = sum / 16 / 1000.0f * BATT_DIVIDER;
-  batteryPct = packVoltsToPercent(battVoltsEma);
-  charging = digitalRead(PIN_VBUS) == HIGH;
+  battRawEma = sum / 16 / 1000.0f * BATT_DIVIDER;
+  batteryPct = packVoltsToPercent(battVolts(), BATT_CELLS_SERIES);
+  charging = (digitalRead(PIN_VBUS) == LOW) == CHARGE_ACTIVE_LOW;
 
-  prefs.begin("nexa", false);
   paired = prefs.getBool("paired", false);
   ctl.setTarget(prefs.getUChar("target", TARGET_DEFAULT));
   ctl.setSaver(prefs.getBool("saver", false));
@@ -289,6 +319,7 @@ void setup() {
   oled.begin();
 
   setupBle();
+  if (SERIAL_LOG) Serial.println("[nexa] ready. Type 'help' for commands.");
   if (!paired) pairingUntil = millis() + PAIRING_WINDOW_MS;   // first boot: discoverable
   updateAdvertising();
 }
@@ -299,6 +330,7 @@ void loop() {
 
   readSensors();
   drainCommands();
+  handleSerial();
 
   switch (button.update(digitalRead(PIN_BUTTON) == LOW, now)) {
     case BTN_SHORT: ctl.toggle(BY_BOTTLE, inputs()); publishState(); break;
@@ -307,6 +339,7 @@ void loop() {
       ctl.turnOff(BY_BOTTLE, inputs());
       ctl.log.clear();
       prefs.clear();
+      prefs.putFloat("batcal", battCal);        // the battery calibration belongs to the hardware, keep it
       paired = false;
       ctl.setTarget(TARGET_DEFAULT);
       ctl.setSaver(false);
@@ -323,7 +356,7 @@ void loop() {
     ledcWrite(PIN_TEC, (uint32_t)(o.tecDuty * ((1 << TEC_PWM_BITS) - 1)));
     digitalWrite(PIN_FAN, o.fan ? HIGH : LOW);
   }
-  if (now - lastPublish >= 1000) { lastPublish = now; publishState(); }
+  if (now - lastPublish >= 1000) { lastPublish = now; publishState(); if (SERIAL_LOG) logStatus(); }
   if (now - lastCyclesSave >= 600000) { lastCyclesSave = now; prefs.putFloat("cycles", cyclesUsed); }
 
   updateAdvertising();
