@@ -72,6 +72,26 @@ static void testSafety() {
   CHECK(!c.coolingOn() && c.sensorFault());
 }
 
+static void testDerating() {
+  Controller c;
+  CHECK(c.turnOn(BY_APP, in(20)));
+  Outputs o{};
+  for (int i = 0; i < 12; i++) o = c.step(1.0f, in(20, 40));        // cool heatsink → full power
+  NEAR(o.tecDuty, 1.0f, 1e-4);
+  for (int i = 0; i < 12; i++) o = c.step(1.0f, in(20, 57));        // halfway through the derate band
+  NEAR(o.tecDuty, 0.5f, 1e-3);
+  CHECK(c.coolingOn() && !c.overheat());                            // still cooling, just gently
+  for (int i = 0; i < 12; i++) o = c.step(1.0f, in(20, 62.5f));     // past the band → TEC idle…
+  NEAR(o.tecDuty, 0.0f, 1e-4);
+  CHECK(c.coolingOn() && !c.overheat());                            // …but not tripped (trip is 65 °C)
+  for (int i = 0; i < 60; i++) o = c.step(1.0f, in(20, 62.5f));     // long after the run-on timer
+  CHECK(o.fan);                                                     // the fan keeps blowing while the heatsink is hot
+  for (int i = 0; i < 12; i++) o = c.step(1.0f, in(20, 45));        // heatsink recovers → power returns
+  CHECK(o.tecDuty > 0.9f);
+  c.step(1, in(20, 66));                                            // the hard trip still works
+  CHECK(!c.coolingOn() && c.overheat());
+}
+
 static void testSessionRecording() {
   Controller c;
   c.setTarget(10);
@@ -153,6 +173,7 @@ static void writeFixtures(const char* path) {
 int main(int argc, char** argv) {
   testThermostat();
   testSafety();
+  testDerating();
   testSessionRecording();
   testBattery();
   testButton();

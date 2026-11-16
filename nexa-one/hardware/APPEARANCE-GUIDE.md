@@ -49,14 +49,17 @@ Same diameters and base in both; only the body height differs.
 | Vessel volume (Ø73 bottle) | ≈ 980 ml | ≈ 770 ml |
 | Total height with the 75 mm base | **403 mm** | **351 mm** |
 | Printer Z height needed (sleeve) | 262 mm | 210 mm |
-| Cool-down 24 → 8 °C, one TEC1-12706 | ≈ 2.3 h | ≈ 1.8 h |
-| Filled to 500 ml | ≈ 1.2 h | ≈ 1.2 h |
+| Cool-down 24 → 12 °C (base-sized heatsink) | ≈ 1.9 h | ≈ 1.5 h |
+| Cool-down 24 → 15 °C | ≈ 1.1 h | ≈ 53 min |
+| 24 → 8 °C | not practical (about 5 h or more) | not practical (about 5 h) |
 
-Neither fits a car cup holder (the base is Ø90). A single 40×40 Peltier is a
-**keep-it-cold** device: fill with cold water and it holds 8 °C for hours.
-Cooling a full bottle from room temperature works, but takes about two hours
-and most of a charge. (Times are heat-capacity arithmetic with a typical 8 W
-of pumped heat, not a measurement of your build.)
+Neither fits a car cup holder (the base is Ø90). With the heatsink that fits in
+this base, the bottle is a **keep-it-cold** device: fill it with cold water and
+it holds 8–10 °C for hours. Cooling a full bottle from room temperature gets to
+about 12–15 °C in an hour or two, not 8 °C. **If you need 15 minutes, read
+[COOLING-SPEED.md](COOLING-SPEED.md)**: that needs a much bigger heatsink than a bottle base
+can hold. (Times come from the simulation in `design/cooldown_sim.py`, not from a
+measurement of your build.)
 
 ## 3. Dimensions (scale 0.5 mm per render unit)
 

@@ -61,11 +61,40 @@ with a flat bottom, and insulate its sides instead.
 
 ## 0.1 What to realistically expect
 
-Peltier coolers are inefficient (COP ≈ 0.3–0.5). Here are honest numbers for a
-500 ml bottle:
+> **Correction.** An earlier version of this section said a full bottle cools
+> 24 → 8 °C in 60–90 minutes. That was too optimistic: it assumed more heat
+> could leave through the small base heatsink than it really can. The numbers
+> below come from a simulation, `design/cooldown_sim.py`, and the whole story is
+> in [COOLING-SPEED.md](COOLING-SPEED.md).
+
+A Peltier moves heat, it doesn't destroy it. For every watt of cooling the hot
+side must shed that watt **plus** all the electrical power (about 2–3× more),
+so the **heatsink sets the speed**, not the Peltier. With the 40 mm heatsink
+that fits the base (about 1 K/W), a bottle starting at 24 °C reaches:
+
+| Water, 24 °C start | → 15 °C | → 12 °C | → 10 °C | → 8 °C |
+|---|---|---|---|---|
+| 250 ml | 19 min | 32 min | 47 min | 100 min |
+| 500 ml | 36 min | 59 min | 87 min | 188 min |
+| 770 ml | 53 min | 89 min | 131 min | 283 min |
+
+(with the water stirred or shaken; without stirring about 30 % longer, and
+8 °C is never reached). The coldest this hardware can hold in 24 °C air is
+**about 8–9 °C**, so treat targets below 10 °C as "best effort".
 
 | | Value |
 |---|---|
+| Heat to remove, 500 ml, 24 → 8 °C | 0.5 kg × 4186 J/kg·K × 16 K ≈ **36 kJ (10 Wh)** |
+| Peltier at ~3 A | ≈ 22–25 W in, heat out of the heatsink ≈ 35 W |
+| Battery 2S2P 18650 (7.2 V × 6 Ah) | **~43 Wh**: enough for one cool-down plus hours of holding |
+| Holding cold water cold (good insulation) | ~3–6 W average → many hours |
+| USB-C charging (15–18 W PD) | **~3 hours** |
+
+**Best use:** fill it with cold water and let the bottle **keep** it cold. That is
+where a Peltier bottle shines. Cooling warm water from scratch works to about
+12–15 °C in under an hour, but not fast.
+
+---|---|
 | Heat to remove, 24 °C → 8 °C | 0.5 kg × 4186 J/kg·K × 16 K ≈ **33.5 kJ (9.3 Wh)** |
 | Peltier at ~7.4 V | ~3 A → **~22 W** in, ~8 W of heat pumped |
 | Cool-down 24 → 8 °C | **~60–90 min** (the app's simulator is faster; its numbers are for the demo) |

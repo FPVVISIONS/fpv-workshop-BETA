@@ -151,6 +151,12 @@ build order. The firmware draws the app's "bottle display" layout on a 1.3″ OL
 It also records two findings: the render's base is too short to hold the battery,
 and the vessel should be aluminium.
 
+## How fast can it cool?
+
+[hardware/COOLING-SPEED.md](hardware/COOLING-SPEED.md): why 15 minutes isn't
+possible with a bottle-sized heatsink, what each fix costs, and what I recommend.
+Includes the simulation (`hardware/design/cooldown_sim.py`) and chart.
+
 ## Print it
 
 [hardware/PRINTING-GUIDE.md](hardware/PRINTING-GUIDE.md): everything printable

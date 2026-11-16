@@ -25,6 +25,9 @@ constexpr float  HOLD_BAND       = 0.2f;   // °C  (app: kt.holdBand)
 constexpr float  SAVER_FACTOR    = 0.6f;   // app: kt.saverPowerFactor
 constexpr float  HOT_SIDE_TRIP   = 65.0f;  // °C  heatsink over-temperature → stop
 constexpr float  HOT_SIDE_RESET  = 45.0f;  // °C  may restart below this
+constexpr float  DERATE_START    = 52.0f;  // °C  heatsink above this → power is reduced smoothly…
+constexpr float  DERATE_END      = 62.0f;  // °C  …to zero here (so the trip above is a last resort)
+constexpr float  FAN_ON_ABOVE    = 40.0f;  // °C  the fan runs whenever the heatsink is warmer than this
 constexpr float  WATER_MIN_VALID = -10.0f; // °C  sensor sanity window
 constexpr float  WATER_MAX_VALID = 80.0f;
 constexpr int    BATTERY_CUTOFF  = 3;      // %   stop cooling (not charging)
@@ -196,6 +199,11 @@ class Controller {
         want = clampf(0.25f + 0.5f * e, 0.0f, 0.35f);
       }
       if (saver_) want *= SAVER_FACTOR;
+      // Heatsink derating: the hotter the heatsink, the less power we feed the Peltier,
+      // so the bottle cools as fast as its heatsink can shed the heat instead of
+      // running flat out until the safety trip stops it.
+      if (!isnan(in.hotSideC) && in.hotSideC > DERATE_START)
+        want *= clampf((DERATE_END - in.hotSideC) / (DERATE_END - DERATE_START), 0.0f, 1.0f);
       int16_t t10 = toTenths(in.waterC);
       if (t10 < cur_.minT10) cur_.minT10 = t10;
     }
@@ -208,7 +216,7 @@ class Controller {
     if (duty_ > 0.001f) fanRunOn_ = FAN_RUN_ON_S;
     else if (fanRunOn_ > 0) fanRunOn_ -= dt;
     // Overheat: TEC off but keep the fan blowing to cool the heatsink.
-    bool fan = duty_ > 0.001f || fanRunOn_ > 0 || overheat_;
+    bool fan = duty_ > 0.001f || fanRunOn_ > 0 || overheat_ || (!isnan(in.hotSideC) && in.hotSideC > FAN_ON_ABOVE);
     return {duty_, fan};
   }
 

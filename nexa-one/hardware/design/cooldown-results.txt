@@ -1,0 +1,33 @@
+Heat that must leave the water (24 → 8 °C), and the average cooling power for 15 min:
+   250 ml   19.1 kJ    21.3 W average over 15 min
+   330 ml   24.5 kJ    27.2 W average over 15 min
+   500 ml   35.9 kJ    39.9 W average over 15 min
+   770 ml   54.0 kJ    60.0 W average over 15 min
+   980 ml   68.0 kJ    75.6 W average over 15 min
+
+(one TEC1-12706 pumps at most ≈ 60 W with a 0 K difference; about 35 W at 15 K; about 20 W at 25 K)
+
+0) Coldest water each hardware class can hold in 24 °C air (it can never cool below this, however long you wait):
+   40 mm sink + fan (fits the base)   stirred   7.8 °C    bottom plate only   9.1 °C
+   60 mm tower + fan                  stirred  -1.0 °C    bottom plate only   1.2 °C
+   120 mm tower + fan                 stirred  -8.1 °C    bottom plate only  -5.2 °C
+   120 mm tower, 2 TECs, 140 W        stirred  -6.5 °C    bottom plate only  -3.3 °C
+
+A) What heatsink does 15 minutes to 8 °C need?  (hot-side resistance, K per watt; smaller = bigger heatsink)
+   reference: 40 mm sink + fan ≈ 1.0   60 mm tower + fan ≈ 0.5   120 mm tower + fan ≈ 0.25   dual heat-pipe tower ≈ 0.15
+    250 ml   1 TEC, 60 W: 0.34 K/W   |   2 TECs, 140 W: 0.36 K/W
+    330 ml   1 TEC, 60 W: 0.20 K/W   |   2 TECs, 140 W: 0.29 K/W
+    500 ml   1 TEC, 60 W: not reachable   |   2 TECs, 140 W: 0.18 K/W
+    770 ml   1 TEC, 60 W: not reachable   |   2 TECs, 140 W: 0.05 K/W
+
+B) Minutes to reach the target, water stirred (1 TEC, 60 W unless stated):
+                                       250ml→8 °C   250ml→12°C   250ml→15°C   500ml→8 °C   500ml→12°C   500ml→15°C 
+   40 mm sink + fan (fits the base)       100 min        32 min        19 min       188 min        59 min        36 min  
+   60 mm tower + fan                       21 min        13 min         9 min        39 min        25 min        17 min  
+   120 mm tower + fan                      13 min         9 min         6 min        24 min        16 min        12 min  
+   120 mm tower, 2 TECs, 140 W             10 min         7 min         5 min        19 min        13 min         9 min  
+
+C) Same, but the water is NOT stirred (bottom plate only; the cold stays at the bottom):
+   40 mm sink + fan (fits the base)        never        41 min        23 min        never        78 min        44 min  
+   60 mm tower + fan                       28 min        17 min        11 min        52 min        32 min        22 min  
+   120 mm tower + fan                      17 min        11 min         8 min        32 min        21 min        15 min  
