@@ -220,7 +220,11 @@
     sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
     alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5v.01"/>',
+    bluetooth: '<path d="M7 7.5l10 9-5 4.5V3l5 4.5-10 9"/>',
   };
+  const guideRow = () => (window.NexaGuide
+    ? row('bluetooth', 'מדריך חיבור הבקבוק', 'שלב אחר שלב, בפחות מדקה', () => closeSheet(false, () => window.NexaGuide.open()))
+    : null);
   const svg = (name, size = 20) =>
     `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${I[name]}</svg>`;
 
@@ -718,7 +722,7 @@
           h('div', { class: 'fa-actions fa-actions-row' },
             h('button', { type: 'button', class: 'fa-btn fa-btn-primary fa-stagger', onclick: () => closeSheet(false, () => openGate('modal', 'signup')) }, h('span', { class: 'fa-btn-label' }, 'הרשמה')),
             h('button', { type: 'button', class: 'fa-btn fa-btn-ghost fa-stagger', onclick: () => closeSheet(false, () => openGate('modal', 'signin')) }, 'התחברות')),
-          h('div', { class: 'fa-list' }, row('sliders', 'העדפות אפליקציה', 'שם לתצוגה, נתוני הדגמה, תנועה', openAppPrefs)));
+          h('div', { class: 'fa-list' }, guideRow(), row('sliders', 'העדפות אפליקציה', 'שם לתצוגה, נתוני הדגמה, תנועה', openAppPrefs)));
       }
       const since = new Intl.DateTimeFormat('he-IL', { month: 'long', year: 'numeric' }).format(new Date(user.createdAt || Date.now()));
       return h('div', { class: 'fa-panel' }, panelHead('החשבון שלי'),
@@ -731,6 +735,7 @@
         h('div', { class: 'fa-list' },
           row('user', 'פרטים אישיים', 'שינוי השם שלכם', () => subPanel(editNamePanel)),
           row('key', 'שינוי סיסמה', 'מומלץ להחליף מדי פעם', () => subPanel(changePwPanel)),
+          guideRow(),
           row('sliders', 'העדפות אפליקציה', 'נתוני הדגמה, הפחתת תנועה ועוד', openAppPrefs)),
         h('div', { class: 'fa-list' },
           row('logout', 'התנתקות', null, signOut, true),

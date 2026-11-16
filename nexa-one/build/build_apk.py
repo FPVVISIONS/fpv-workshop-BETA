@@ -59,7 +59,7 @@ def patch_bundle(src: bytes) -> bytes:
     return text.encode("utf-8")
 
 
-WEB_EXTRAS = ("nexa-fx.css", "nexa-fx.js", "nexa-auth.css", "nexa-auth.js")
+WEB_EXTRAS = ("nexa-fx.css", "nexa-fx.js", "nexa-auth.css", "nexa-auth.js", "nexa-guide.css", "nexa-guide.js")
 ICONS = os.path.join(HERE, "..", "icon", "out")  # rendered by icon/render.js
 
 

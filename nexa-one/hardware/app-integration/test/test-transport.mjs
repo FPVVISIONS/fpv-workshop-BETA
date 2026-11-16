@@ -1,0 +1,32 @@
+// Runs BleBottle against a fake bottle (the Capacitor BLE plugin
+// is mocked by mock-ble.mjs). Run: node --import ./test/register.mjs test/test-transport.mjs
+import assert from 'node:assert/strict';
+globalThis.localStorage = { m: {}, getItem(k) { return this.m[k] ?? null; }, setItem(k, v) { this.m[k] = String(v); } };
+const { BleClient } = await import('@capacitor-community/bluetooth-le');
+const { BleBottle } = await import('../ble-transport.js');
+let fakeNow = Date.now(); const realNow = Date.now; Date.now = () => fakeNow;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const b = new BleBottle();
+await b.connect();
+let s = b.getSnapshot();
+assert.equal(s.connection, 'connected'); assert.equal(s.reading.waterTemp, 20); assert.equal(s.paired, true);
+await b.setTarget(12); assert.equal(b.getSnapshot().reading.target, 12);
+await b.setTarget(99); assert.equal(b.getSnapshot().reading.target, 15);
+await b.setCooling(true);
+assert.equal(b.getSnapshot().reading.coolingOn, true); assert.ok(b.getSnapshot().activeSession);
+fakeNow += 6000; BleClient._tick(6, 17.5); fakeNow += 6000; BleClient._tick(6, 14.2);
+assert.equal(b.getSnapshot().activeSession.samples.length, 3);
+await b.setCooling(false); await wait(10);
+s = b.getSnapshot();
+assert.equal(s.activeSession, null);
+assert.equal(s.sessions.length, 1, 'session synced from bottle');
+assert.equal(s.sessions[0].origin, 'bottle'); assert.ok(s.sessions[0].samples.length >= 3, 'live chart attached');
+assert.equal(BleClient._dev.sessions.length, 0, 'bottle record acknowledged + deleted');
+BleClient._drop(); assert.equal(b.getSnapshot().connection, 'disconnected');
+await wait(2100); assert.equal(b.getSnapshot().connection, 'connected', 'auto-reconnect');
+const again = new BleBottle(); await wait(5);
+assert.equal(again.getSnapshot().paired, true, 'remembers the bottle across launches');
+assert.equal(BleClient.calls.filter((c) => c[0] === 'requestDevice').length, 1, 'picker shown only the first time');
+await b.disconnect(); await again.disconnect();
+console.log('BleBottle: all transport scenarios passed');
+process.exit(0);

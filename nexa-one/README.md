@@ -109,6 +109,32 @@ Other code can use `NexaAuth.user`, `NexaAuth.onChange(fn)`,
 > Before a public release, link the "תנאי השימוש ומדיניות הפרטיות" consent line to
 > your real Terms and Privacy pages.
 
+## First-time connection guide
+
+`nexa-guide.js` / `nexa-guide.css`: a 5-step animated walkthrough that opens
+automatically the first time the user reaches the disconnected home screen
+(after the welcome / sign-in screen):
+
+1. **Charging:** a USB-C cable plugs in and the battery fills.
+2. **Turning it on:** hold the button 3 s until the Bluetooth icon blinks.
+3. **Bluetooth & permission:** the toggle switches on and the "Nearby devices" prompt appears.
+4. **Bring the phone close:** signal waves, "up to a metre".
+5. **Connect!** A check mark draws on the phone. The button presses the app's own connect button.
+   Includes a "can't connect?" troubleshooting list and a demo-mode note.
+
+Swipe, arrow keys, Back/Next, *Skip* and Android back all work. It never opens
+automatically again once finished, skipped, or once a bottle has connected.
+Re-open it from the account sheet ("מדריך חיבור הבקבוק") or with
+`NexaGuide.open()`. The button gestures and timings it teaches match the
+firmware in `hardware/`.
+
+## Build the real bottle
+
+See **[hardware/BUILD-GUIDE.md](hardware/BUILD-GUIDE.md)**: parts list, wiring,
+assembly, honest Peltier/battery numbers, safety, the ESP32-C3 firmware, the
+Bluetooth protocol, and how to connect the app's source project to the real
+bottle (`hardware/app-integration/ble-transport.js`).
+
 ## Files
 
 ```
@@ -117,7 +143,13 @@ web/
   nexa-fx.js      motion behaviour (no dependencies, ~20 KB unminified)
   nexa-auth.css   account screens
   nexa-auth.js    sign up / sign in / reset / account sheet (no dependencies)
-  index.html      original index.html + splash markup + the four tags
+  nexa-guide.css  connection guide styles + illustration animations
+  nexa-guide.js   first-time "connect your bottle" walkthrough
+  index.html      original index.html + splash markup + the six tags
+hardware/
+  BUILD-GUIDE.md  how to build the Peltier bottle and connect it
+  firmware/       ESP32-C3 firmware (nexa_core.h is unit-tested: firmware/test)
+  app-integration/ Bluetooth protocol + BleBottle transport for the app source
 icon/
   icon.js         the app icon as a single SVG generator
   render.js       renders all launcher, splash and web icons → icon/out/
@@ -130,13 +162,15 @@ build/
 
 ## Option A: put it into the app's source project (recommended)
 
-1. Copy the four `web/nexa-*` files into the Vite `public/` folder.
+1. Copy the six `web/nexa-*` files into the Vite `public/` folder.
 2. In the source `index.html` `<head>`, after the app's own stylesheet:
    ```html
    <link rel="stylesheet" href="./nexa-fx.css">
    <script defer src="./nexa-fx.js"></script>
    <link rel="stylesheet" href="./nexa-auth.css">
    <script defer src="./nexa-auth.js"></script>
+   <link rel="stylesheet" href="./nexa-guide.css">
+   <script defer src="./nexa-guide.js"></script>
    ```
    Also copy the `<div id="fx-splash">…</div>` block from `web/index.html` into
    `<body>`, right after `<div id="root">…</div>`.
