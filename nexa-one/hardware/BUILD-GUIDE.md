@@ -9,6 +9,11 @@ match the app's built-in simulator exactly. The same controls (cooling on/off,
 target 5–15 °C, battery saver) and the same data (water temperature, battery,
 cooling phase, session history) work with the real bottle.
 
+> **Making it look like the app?** Read **[APPEARANCE-GUIDE.md](APPEARANCE-GUIDE.md)** next.
+> It turns the app's bottle render into real dimensions, with a printable base
+> (`design/`). Two findings change this guide: the render's base is too short to
+> hold the battery, and the vessel should be aluminium.
+
 > ⚠️ **This is a DIY prototype, not a certified product.** It combines lithium
 > batteries, high currents, water, and food contact. Read
 > [Safety](#1-safety-read-first) before you start, and don't sell or give one
@@ -22,7 +27,7 @@ cooling phase, session history) work with the real bottle.
           ┌───────────────┐
           │   lid / cap   │
           │               │   500 ml water
-          │  ░░ water ░░  │◄─ single-wall stainless inner vessel
+          │  ░░ water ░░  │◄─ thin-wall aluminium inner vessel
           │  ░░░░░░░░░░░  │   wrapped in 8–10 mm closed-cell foam
           │  ░░░░░░░░░░░  │
    probe ─┼─►●  ░░░░░░░░  │   DS18B20 #1 on the vessel wall (water temp)
@@ -41,8 +46,18 @@ water through an aluminium block. The hot face dumps that heat, **plus all
 the electrical power you put in**, into a heatsink and fan.
 
 **Key design rule:** you **cannot cool through a vacuum-insulated (double-wall)
-flask.** The vacuum blocks heat both ways. Use a **single-wall** stainless
-vessel with a flat bottom, and insulate its sides with foam instead.
+flask.** The vacuum blocks heat both ways. Use a **single-wall** vessel
+with a flat bottom, and insulate its sides instead.
+
+> **Use thin aluminium, not stainless, and here is why.** The Peltier sits under
+> the bottle, so it cools the *bottom*. Above 4 °C cold water is denser, so it
+> stays down there while the warm water floats on top, and the first sips
+> (taken from the top) stay warm. Aluminium conducts heat about 15× better than
+> stainless, so the cold climbs the walls; the chilled water along the wall
+> sinks and warm water rises through the middle, which mixes the bottle. Shaking
+> it once before drinking helps too. This is physics reasoning, not a test of
+> your build: measure a full bottle with a thermometer at the top and the
+> bottom after 60 minutes.
 
 ## 0.1 What to realistically expect
 
@@ -78,8 +93,8 @@ uses most of a charge.
   **condensation will form**. Seal around the Peltier with foam gasket and
   silicone, keep the electronics *beside* the stack (not under it), and coat the
   boards (conformal coating or clear nail polish on non-connector areas).
-- **Food contact:** water may touch only **304/316 stainless steel** and
-  **food-grade silicone**. No sensors, glue, or 3D-printed parts in the water.
+- **Food contact:** water may touch only **food-safe aluminium (with its inner
+  coating), 304/316 stainless steel** and **food-grade silicone**. No sensors, glue, or 3D-printed parts in the water.
 - **Heat & plastics:** print the base in **PETG or ASA**, not PLA (PLA warps
   near the heatsink).
 
@@ -102,11 +117,11 @@ uses most of a charge.
 | 11 | Protection | **2S BMS with balance**, 10 A+ (e.g., HX-2S-JH20) + 7.5 A fuse | 3 |
 | 12 | Charger | **2S USB-C PD charger board** with balance (IP2326-based, 15 W) | 4 |
 | 13 | 5 V supply | **MP1584EN** buck module, set to 5.0 V (ESP32 + fan + OLED) | 2 |
-| 14 | Display | **SSD1306 0.91″ 128×32** I²C OLED | 3 |
+| 14 | Display | **1.3″ 128×64 blue OLED** (SH1106, I²C). Its 2:1 panel matches the bottle in the app; the firmware draws the same screen | 4 |
 | 15 | Button | 12 mm momentary push button (metal, waterproof if possible) | 2 |
 | 16 | Master switch | Small slide switch rated 5 A+ | 1 |
 | 17 | Resistors | 220 kΩ + 100 kΩ (battery sense), 10 kΩ + 20 kΩ (USB sense), 100 Ω + 100 kΩ (MOSFET gates), 100 nF caps | 1 |
-| 18 | Vessel | **Single-wall** stainless cup/bottle 500–600 ml with a flat bottom + lid | 8–15 |
+| 18 | Vessel | **Thin-wall aluminium** bottle with a food-safe inner coating, flat bottom, ≈ Ø72 mm inside (see [APPEARANCE-GUIDE.md](APPEARANCE-GUIDE.md)) + sport cap | 10–18 |
 | 19 | Insulation | 8–10 mm closed-cell foam (EPDM/neoprene) + outer shell | 5 |
 | 20 | Base | 3D-printed PETG/ASA (vents, USB-C hole, button, OLED window) | — |
 

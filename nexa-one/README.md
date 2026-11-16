@@ -142,6 +142,15 @@ assembly, honest Peltier/battery numbers, safety, the ESP32-C3 firmware, the
 Bluetooth protocol, and how to connect the app's source project to the real
 bottle (`hardware/app-integration/ble-transport.js`).
 
+## Make the bottle look like the app
+
+See **[hardware/APPEARANCE-GUIDE.md](hardware/APPEARANCE-GUIDE.md)**: the app's
+bottle render turned into real dimensions (`hardware/design/bottle-dimensions.png`),
+a fit check (`fit_check.py`), a printable base (`base_shell.py` → `stl/`), and a
+build order. The firmware draws the app's "bottle display" layout on a 1.3″ OLED.
+It also records two findings: the render's base is too short to hold the battery,
+and the vessel should be aluminium.
+
 ## Files
 
 ```
@@ -156,6 +165,8 @@ web/
 hardware/
   BUILD-GUIDE.md  how to build the Peltier bottle and connect it
   firmware/       ESP32-C3 firmware (nexa_core.h is unit-tested: firmware/test)
+  APPEARANCE-GUIDE.md  how to make it look like the app (dimensions, sleeve, base, order)
+  design/         fit_check.py, base_shell.py (→ stl/), drawing.py, bottle-dimensions.png
   app-integration/ Bluetooth protocol + BleBottle transport for the app source
 icon/
   icon.js         the app icon as a single SVG generator

@@ -14,7 +14,7 @@
 //    GPIO0  ← battery divider 220 kΩ / 100 kΩ (8.4 V → 2.63 V)
 //    GPIO1  ← USB VBUS divider 10 kΩ / 20 kΩ (charging detect)
 //    GPIO20 ← push button to GND (internal pull-up)
-//    GPIO6/7  I2C SDA/SCL → SSD1306 128×32 OLED
+//    GPIO6/7  I2C SDA/SCL → 1.3" 128×64 OLED (same 2:1 shape as the app's bottle render)
 // =============================================================================
 #include <Arduino.h>
 #include <Wire.h>
@@ -41,7 +41,9 @@ Button button;
 Preferences prefs;
 OneWire owWater(PIN_WATER), owHot(PIN_HOT);
 DallasTemperature waterSensor(&owWater), hotSensor(&owHot);
-U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+// 1.3" 128x64 blue OLED. Most are SH1106; if yours is SSD1306 use
+// U8G2_SSD1306_128X64_NONAME_F_HW_I2C instead.
+U8G2_SH1106_128X64_NONAME_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
 
 NimBLEServer* server = nullptr;
 NimBLECharacteristic *chState = nullptr, *chControl = nullptr, *chSessions = nullptr;
@@ -183,30 +185,79 @@ static void readSensors() {
 }
 
 // --------------------------------------------------------------- display
+// Mirrors the bottle in the app ("תצוגת הבקבוק"): big temperature on the left,
+// snowflake + target + battery stacked on the right, all on black.
+// Coordinates are the render's display (68x33 units) x 1.88 → 128x64 pixels.
+// If your font metrics differ, nudge the constants here.
+constexpr int TEMP_X = 8, TEMP_BASE_Y = 47;        // big digits
+constexpr int SNOW_CX = 113, SNOW_CY = 14, SNOW_R = 7;
+constexpr int TARGET_X = 100, TARGET_Y = 38;       // "8°"
+constexpr int BATT_X = 100, BATT_Y = 46, BATT_W = 22, BATT_H = 10;
+
+static void drawSnowflake(int cx, int cy, int r) {
+  int h = (r * 87) / 100, v = r / 2;               // cos30, sin30
+  oled.drawLine(cx, cy - r, cx, cy + r);
+  oled.drawLine(cx - h, cy - v, cx + h, cy + v);
+  oled.drawLine(cx - h, cy + v, cx + h, cy - v);
+}
+static void drawBluetooth(int cx, int cy, int s) {   // the rune used in the app's guide
+  oled.drawLine(cx - s, cy - s, cx + s, cy + s / 2 + 1);
+  oled.drawLine(cx + s, cy + s / 2 + 1, cx, cy + s * 2);
+  oled.drawLine(cx, cy - s * 2, cx, cy + s * 2);
+  oled.drawLine(cx, cy - s * 2, cx + s, cy - s / 2 - 1);
+  oled.drawLine(cx + s, cy - s / 2 - 1, cx - s, cy + s);
+}
+
 static void drawDisplay() {
   static uint32_t last = 0;
   if (millis() - last < 200) return;
   last = millis();
-  bool blink = (millis() / 400) % 2;
+  bool blink = (millis() / 500) % 2;
   oled.clearBuffer();
   if (millis() < identifyUntil && blink) { oled.sendBuffer(); return; }
+
+  bool pairing = millis() < pairingUntil && !bleConnected;
+  if (pairing) {
+    // Same state the app's guide shows: Bluetooth rune blinking, nothing else.
+    if (blink) drawBluetooth(64, 32, 9);
+    oled.sendBuffer();
+    return;
+  }
+
+  if (charging && !ctl.coolingOn()) {
+    // Charging screen: big battery that fills, with the percentage.
+    oled.drawFrame(14, 18, 76, 28);
+    oled.drawBox(90, 26, 5, 12);
+    oled.drawBox(17, 21, (uint8_t)(70 * batteryPct / 100), 22);
+    char pc[8]; snprintf(pc, sizeof pc, "%u%%", batteryPct);
+    oled.setFont(u8g2_font_6x10_tf);
+    oled.drawStr(100, 36, pc);
+    oled.sendBuffer();
+    return;
+  }
+
   char t[8];
   if (isnan(waterC)) snprintf(t, sizeof t, "--.-");
   else snprintf(t, sizeof t, "%.1f", waterC);
-  oled.setFont(u8g2_font_logisoso24_tn);
-  oled.drawStr(0, 28, t);
+  oled.setFont(u8g2_font_logisoso22_tn);
+  oled.drawStr(TEMP_X, TEMP_BASE_Y, t);
   oled.setFont(u8g2_font_6x10_tf);
-  oled.drawStr(76, 10, ctl.coolingOn() ? "*" : " ");                  // cooling indicator
+  oled.drawStr(TEMP_X + 66, TEMP_BASE_Y - 20, "o");               // degree mark
+
+  if (ctl.coolingOn()) drawSnowflake(SNOW_CX, SNOW_CY, SNOW_R);
   char tg[8]; snprintf(tg, sizeof tg, "%d", ctl.target());
-  oled.drawStr(86, 10, tg);
-  bool pairing = millis() < pairingUntil;
-  if (bleConnected || (pairing && blink)) oled.drawStr(110, 10, "BT");
-  if (ctl.overheat()) oled.drawStr(76, 31, "HOT!");
-  else if (ctl.sensorFault()) oled.drawStr(76, 31, "SENS");
-  oled.drawFrame(100, 22, 24, 9);                                       // battery
-  oled.drawBox(124, 24, 2, 5);
-  oled.drawBox(102, 24, (uint8_t)(20 * batteryPct / 100), 5);
-  if (charging && blink) oled.drawStr(90, 31, "+");
+  oled.drawCircle(TARGET_X - 5, TARGET_Y - 4, 3);                   // target mark
+  oled.drawBox(TARGET_X - 6, TARGET_Y - 5, 3, 3);
+  oled.drawStr(TARGET_X + 2, TARGET_Y, tg);
+
+  oled.drawFrame(BATT_X, BATT_Y, BATT_W, BATT_H);                    // battery
+  oled.drawBox(BATT_X + BATT_W, BATT_Y + 3, 2, BATT_H - 6);
+  oled.drawBox(BATT_X + 2, BATT_Y + 2, (uint8_t)((BATT_W - 4) * batteryPct / 100), BATT_H - 4);
+  if (charging && blink) oled.drawStr(BATT_X - 8, BATT_Y + 9, "+");
+
+  if (bleConnected) drawBluetooth(8, 8, 3);                          // top-left, small
+  if (ctl.overheat()) oled.drawStr(TEMP_X, 62, "HOT - COOLING DOWN");
+  else if (ctl.sensorFault()) oled.drawStr(TEMP_X, 62, "SENSOR ERROR");
   oled.sendBuffer();
 }
 
