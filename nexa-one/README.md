@@ -33,7 +33,7 @@ the two files are removed, the app works exactly as before.
 ```
 web/
   nexa-fx.css     styles, keyframes, reduced-motion rules
-  nexa-fx.js      behaviour (no dependencies, ~15 KB)
+  nexa-fx.js      behaviour (no dependencies, ~20 KB unminified)
   index.html      original index.html + splash markup + the two tags above
 build/
   build_apk.py    rebuilds and signs the APK from the original
