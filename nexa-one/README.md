@@ -111,16 +111,23 @@ Other code can use `NexaAuth.user`, `NexaAuth.onChange(fn)`,
 
 ## First-time connection guide
 
-`nexa-guide.js` / `nexa-guide.css`: a 5-step animated walkthrough that opens
-automatically the first time the user reaches the disconnected home screen
-(after the welcome / sign-in screen):
+`nexa-guide.js` / `nexa-guide.css` / `nexa-guide-bottle.svg`: a 3-step
+walkthrough that opens automatically the first time the user reaches the
+disconnected home screen (after the welcome / sign-in screen).
 
-1. **Charging:** a USB-C cable plugs in and the battery fills.
-2. **Turning it on:** hold the button 3 s until the Bluetooth icon blinks.
-3. **Bluetooth & permission:** the toggle switches on and the "Nearby devices" prompt appears.
-4. **Bring the phone close:** signal waves, "up to a metre".
-5. **Connect!** A check mark draws on the phone. The button presses the app's own connect button.
-   Includes a "can't connect?" troubleshooting list and a demo-mode note.
+It's built on the app's **own product render** (extracted into
+`nexa-guide-bottle.svg`), not on illustrations. A camera moves over that one
+image, and the bottle's real display shows what the user should look for:
+
+1. **Charge:** close-up of the base; the display's battery gauge fills and the % counts up.
+2. **Hold the button 3 s:** close-up of the display and button; a hold ring fills around
+   the button, then the Bluetooth symbol blinks on the display.
+3. **Connect:** the whole bottle. A short note explains the "Nearby devices" permission,
+   plus a plain "לא מתחבר?" list and a demo-mode note. The button presses the app's own
+   connect button.
+
+The copy is short and specific, and the chrome reuses the app's own type and
+primary button.
 
 Swipe, arrow keys, Back/Next, *Skip* and Android back all work. It never opens
 automatically again once finished, skipped, or once a bottle has connected.
