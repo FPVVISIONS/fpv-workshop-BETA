@@ -8,12 +8,12 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from fit_check import R, base_requirements, dims  # noqa: E402
+import math  # noqa: E402
+from fit_check import K, R, base_requirements, dims  # noqa: E402
 
-K = 0.478
 D = dims(K)
 NEED = base_requirements()
-BASE_H = round(NEED['h'])                        # built base height
+BASE_H = math.ceil(NEED['h'])                        # built base height
 EXTRA = (BASE_H - D['render_base_h']) / K        # render units to add below the base
 SRC = os.path.join(os.path.dirname(__file__), '..', '..', 'web', 'nexa-guide-bottle.svg')
 bottle = open(SRC, encoding='utf-8').read()
@@ -59,7 +59,7 @@ out.append(f'<text x="180" y="{bottom_build + 22}" text-anchor="middle" fill="{L
 hdim(116, 244, 86, f'Ø{D["cap_w"]:.0f} cap')
 hdim(161, 199, 50, f'Ø{D["spout_w"]:.0f}')
 hdim(92, 268, 262, f'Ø{D["body_w"]:.0f} body')
-hdim(102.5, 257.5, 456, f'Ø{D["waist_w"]:.0f} waist', up=False)
+hdim(102.5, 257.5, 456, f'Ø{D["waist_w"]:.1f} waist', up=False)
 hdim(90, 270, bottom_build + 40, f'Ø{D["base_od"]:.0f} base', up=False)
 
 # heights: cap/body on the right, base further right, total on the far left (rotated label)
@@ -71,7 +71,7 @@ vdim(X, R['body_top'], R['body_bot'], f'{mm(R["body_bot"] - R["body_top"]):.0f} 
 X2 = 380
 ext(270, base_top, X2 + 4, base_top); ext(268, bottom_build - 6, X2 + 4, bottom_build - 6)
 vdim(X2, base_top, bottom_build - 6, f'{BASE_H} base', 1)
-total = (bottom_build - 6 - R['spout_top']) * K
+total = D['rendered_total_h'] - D['render_base_h'] + BASE_H        # same number as fit_check.py
 X3 = -170
 ext(161, R['spout_top'], X3 - 4, R['spout_top']); ext(110, bottom_build - 6, X3 - 4, bottom_build - 6)
 ym = (R['spout_top'] + bottom_build - 6) / 2

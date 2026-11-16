@@ -20,16 +20,19 @@ import trimesh
 from trimesh.creation import box, cylinder
 from trimesh.transformations import rotation_matrix, translation_matrix
 
-# ---- sizes (from fit_check.py, k = 0.478) ------------------------------------
-OD = 86.0            # outer diameter
-H = 75.0             # height (the render says 54 mm; see APPEARANCE-GUIDE.md)
+# ---- sizes (from fit_check.py, K = 0.5 mm per render unit) -------------------
+OD = 90.0            # outer diameter (render × 0.5; wide enough for the cell cage)
+H = 75.0             # height (the render says 57 mm; see APPEARANCE-GUIDE.md)
 WALL = 3.0
 PLATE = 4.0          # top plate the vessel stands on
 LID_T = 3.0
 EDGE_R = 4.0         # rounded bottom edge
 VESSEL_HOLE = 58.0   # opening for the 40x40 cold block (diagonal 56.6 mm) + gasket
-DISPLAY = (33.5, 16.7)   # window, as rendered
-DISPLAY_Z_FROM_TOP = 18.9
+DISPLAY = (35.0, 17.5)   # window, as rendered
+DISPLAY_Z_FROM_TOP = 19.75
+FRAME_PLANE = 43.4       # flat face the screen sits behind: distance from the axis (outer wall is at 45)
+FRAME_T = 2.2            # frame thickness behind that plane
+FRAME_W, FRAME_H = 46.0, 28.0
 DISPLAY_ANGLE = -12.5    # degrees from the front, toward the viewer's left
 BUTTON_D = 8.2
 BUTTON_ANGLE = 23.6
@@ -38,6 +41,7 @@ SEAM_H = 1.6             # exhaust slit height
 SEAM_Z = H - 9.0
 SLOTS_BOTTOM = 36        # intake slots around the lower wall
 SEGMENTS = 96
+BOSS_R = 39.0           # screw bosses on the diagonals; inner wall radius is 42
 
 
 def revolve_profile(pts, sections=SEGMENTS):
@@ -85,11 +89,23 @@ def place_front_cutter(cutter, z, angle_deg):
     return c
 
 
+def display_frame():
+    """Flat pad behind the display window: the module and its 1 mm acrylic sit on a
+    flat face instead of the curved wall. Trimmed to the outer cylinder so nothing pokes out."""
+    f = box(extents=(FRAME_W, FRAME_T, FRAME_H))
+    f.apply_transform(translation_matrix((0, -(FRAME_PLANE - FRAME_T / 2), H - DISPLAY_Z_FROM_TOP)))
+    f.apply_transform(rotation_matrix(math.radians(DISPLAY_ANGLE), (0, 0, 1)))
+    cyl = cylinder(radius=OD / 2 - 0.4, height=H + 2, sections=SEGMENTS)
+    cyl.apply_transform(translation_matrix((0, 0, H / 2)))
+    return f.intersection(cyl, engine='manifold')
+
+
 def build_shell():
     shell = outer_solid()
     cav = cylinder(radius=OD / 2 - WALL, height=H - PLATE, sections=SEGMENTS)
     cav.apply_transform(translation_matrix((0, 0, (H - PLATE) / 2 - 0.01)))   # open at the bottom
     shell = shell.difference(cav, engine='manifold')
+    shell = shell.union(display_frame(), engine='manifold')
     cuts = []
 
     # cold-block opening in the top plate
@@ -121,17 +137,17 @@ def build_shell():
     # four M3 screw bosses on the diagonals (cells sit on the axes, so these are clear of them)
     bosses = []
     for a in (45, 135, 225, 315):
-        x, y = 37.0 * math.cos(math.radians(a)), 37.0 * math.sin(math.radians(a))
+        x, y = BOSS_R * math.cos(math.radians(a)), BOSS_R * math.sin(math.radians(a))
         b = cylinder(radius=3.6, height=12.0, sections=40)
-        b.apply_transform(translation_matrix((x, y, 6.0)))
+        b.apply_transform(translation_matrix((x, y, LID_T + 6.0)))      # starts on top of the lid
         bosses.append(b)
     boss_u = trimesh.util.concatenate(bosses)
     shell = shell.union(boss_u, engine='manifold')
     pilots = []
     for a in (45, 135, 225, 315):
-        x, y = 37.0 * math.cos(math.radians(a)), 37.0 * math.sin(math.radians(a))
+        x, y = BOSS_R * math.cos(math.radians(a)), BOSS_R * math.sin(math.radians(a))
         p = cylinder(radius=1.3, height=10.0, sections=24)     # M3 self-tapping pilot
-        p.apply_transform(translation_matrix((x, y, 5.0 - 0.01)))
+        p.apply_transform(translation_matrix((x, y, LID_T + 5.0 - 0.01)))
         pilots.append(p)
     shell = shell.difference(trimesh.util.concatenate(pilots), engine='manifold')
     return shell
@@ -142,7 +158,7 @@ def build_lid():
     lid.apply_transform(translation_matrix((0, 0, LID_T / 2)))
     cuts = []
     for a in (45, 135, 225, 315):
-        x, y = 37.0 * math.cos(math.radians(a)), 37.0 * math.sin(math.radians(a))
+        x, y = BOSS_R * math.cos(math.radians(a)), BOSS_R * math.sin(math.radians(a))
         h = cylinder(radius=1.7, height=LID_T + 2, sections=24)
         h.apply_transform(translation_matrix((x, y, LID_T / 2)))
         cuts.append(h)

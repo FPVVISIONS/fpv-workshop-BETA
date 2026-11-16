@@ -121,9 +121,10 @@ uses most of a charge.
 | 15 | Button | 12 mm momentary push button (metal, waterproof if possible) | 2 |
 | 16 | Master switch | Small slide switch rated 5 A+ | 1 |
 | 17 | Resistors | 220 kΩ + 100 kΩ (battery sense), 10 kΩ + 20 kΩ (USB sense), 100 Ω + 100 kΩ (MOSFET gates), 100 nF caps | 1 |
-| 18 | Vessel | **Thin-wall aluminium** bottle with a food-safe inner coating, flat bottom, ≈ Ø72 mm inside (see [APPEARANCE-GUIDE.md](APPEARANCE-GUIDE.md)) + sport cap | 10–18 |
-| 19 | Insulation | 8–10 mm closed-cell foam (EPDM/neoprene) + outer shell | 5 |
-| 20 | Base | 3D-printed PETG/ASA (vents, USB-C hole, button, OLED window) | — |
+| 18 | Vessel | **Thin-wall aluminium** bottle with a food-safe inner coating, flat bottom, **Ø73 mm outside** (see [APPEARANCE-GUIDE.md](APPEARANCE-GUIDE.md)) + sport cap | 10–18 |
+| 19 | Body sleeve | **TPU 95A**, printed (the app's ribbed, waisted body; also the insulation). About 320 g of filament, see [PRINTING-GUIDE.md](PRINTING-GUIDE.md) | 10 |
+| 20 | Base, lid, cell cage | Printed in PETG/ASA (`design/stl/`): vents, USB-C hole, button, OLED window | 3 |
+| 21 | Silicone sealant | Food-safe, flexible (bottle to base, cold-block gasket) | 4 |
 
 ---
 
@@ -178,7 +179,7 @@ module life.
 2. **Clamp evenly.** Use 2–4 **nylon** M3 screws with spring washers through the
    heatsink into the base frame. Tighten in a cross pattern, finger-tight plus
    a quarter turn. **Over-tightening cracks the Peltier.**
-3. **Insulate.** Wrap the vessel sides in 8–10 mm closed-cell foam. Seal the gap
+3. **Insulate.** The printed TPU sleeve covers the vessel sides (if you skip the sleeve, wrap 8–10 mm closed-cell foam). Seal the gap
    around the aluminium block with a foam gasket and food-safe silicone (this
    keeps humid air, and condensation, away from the cold parts).
 4. **Water sensor.** Fix DS18B20 #1 to the **outside** of the vessel wall, about
