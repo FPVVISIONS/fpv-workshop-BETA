@@ -28,13 +28,100 @@ animates with the Web Animations API, `data-*` attributes and its own overlay
 elements. Each feature is wrapped so an error disables only that feature. If
 the two files are removed, the app works exactly as before.
 
+## New app icon & launch splash
+
+The old launcher icon was a plain outline capsule. The native launch splash was
+Capacitor's **default white screen with the blue ✕ logo**, so the app flashed
+white on every launch.
+
+- **Icon:** the brand capsule becomes a bottle with a spout cap, glowing
+  ice-blue liquid with a wave, a snowflake and a frost halo. Rendered as an
+  adaptive icon (foreground layer on the app's `#101114` background, inside the
+  66 dp safe zone), legacy square and round icons for every density, the web
+  icons (`icon-512.png`, `apple-touch-icon.png`, `nexa-icon.svg`) and a 512 px
+  store icon (`icon/out/preview/`).
+- **Splash:** every `splash.png` (portrait and landscape, all densities) is now
+  the new icon and wordmark on the app's own ink background, so the native
+  splash hands off seamlessly to the in-app splash.
+
+The source is a single SVG generator, `icon/icon.js`. Run `node icon/render.js`
+to re-render everything into `icon/out/` (it needs Playwright). `build_apk.py`
+swaps the files in automatically.
+
+> Android 12+ draws its own splash from the launcher icon, so it gets the new
+> icon automatically. Its background colour comes from the app theme, which
+> isn't changed here. For a dark Android 12+ splash, set
+> `windowSplashScreenBackground` to `#101114` in the source project's
+> `styles.xml`.
+
+## Accounts: sign up, sign in and more
+
+`nexa-auth.js` / `nexa-auth.css` add a complete account flow, in Hebrew and RTL like the app:
+
+| Screen | What's in it |
+|---|---|
+| **Welcome** (first launch) | Animated hero, three feature highlights, *Create account*, *I have an account*, *Continue as guest* |
+| **Sign up** | Name, email, password with a live strength meter, terms consent, inline validation, duplicate-email detection with a jump to sign-in |
+| **Sign in** | Email and password, show/hide password, Caps Lock warning, *Remember me*, 30 s lockout after 5 failed attempts |
+| **Forgot password** | Email → 6-digit code → new password → signed in. Codes expire after 10 min or 5 wrong tries; 30 s resend cooldown |
+| **Account sheet** (header person icon) | Initials avatar, email, member-since date, edit name, change password, **App preferences** (opens the app's original sheet), sign out, delete account (password-confirmed) |
+| **Guest mode** | Never asked again on launch; the account sheet offers sign-up / sign-in any time |
+
+UX details: the signed-in user's initials replace the header person icon. Android's
+back button steps back through every screen and closes sheets. You can swipe the
+sheet down to dismiss it. Errors shake the form, and success turns the button into a
+green check. Toasts confirm actions. Fields use proper `autocomplete` values, so
+password managers and Android autofill work. The app behind a sheet is made
+`inert` for screen readers. Esc and a focus trap are handled on desktop. All motion
+honours reduce-motion.
+
+### Where accounts live and how to connect a real backend
+
+By default accounts are stored **on the device** (`localStorage`). Passwords are
+never stored: only a PBKDF2-SHA256 hash (150,000 iterations, per-user salt) is
+kept. No mail server exists on the device, so the reset code is shown on screen
+in a clearly marked **demo** banner. The UI also says "demo mode · accounts are
+saved on this device only".
+
+To make accounts real (sync across devices, e-mailed codes), plug in a backend.
+The UI stays the same:
+
+```js
+// e.g. in a small script loaded after nexa-auth.js
+NexaAuth.useProvider({
+  name: 'supabase',
+  async signUp({ name, email, password }) { /* → { id, name, email, createdAt } */ },
+  async signIn({ email, password })       { /* → user, or throw new NexaAuth.AuthError('invalid') */ },
+  async requestReset({ email })           { /* send the e-mail; return {} (no demoCode) */ },
+  async confirmReset({ email, code, password }) { /* → user */ },
+  async updateProfile(id, { name })       { /* → user */ },
+  async changePassword(id, { current, next }) {},
+  async deleteAccount(id, { password })   {},
+  async exists(id)                        { return true; },
+});
+```
+
+Error codes the UI understands: `exists`, `invalid`, `locked` (with `wait`),
+`nouser`, `code-invalid`, `code-expired`, `wrong-current`, `same-password`.
+Other code can use `NexaAuth.user`, `NexaAuth.onChange(fn)`,
+`NexaAuth.open('signin' | 'signup' | 'account')` and `NexaAuth.signOut()`.
+
+> Before a public release, link the "תנאי השימוש ומדיניות הפרטיות" consent line to
+> your real Terms and Privacy pages.
+
 ## Files
 
 ```
 web/
-  nexa-fx.css     styles, keyframes, reduced-motion rules
-  nexa-fx.js      behaviour (no dependencies, ~20 KB unminified)
-  index.html      original index.html + splash markup + the two tags above
+  nexa-fx.css     motion styles, keyframes, reduced-motion rules
+  nexa-fx.js      motion behaviour (no dependencies, ~20 KB unminified)
+  nexa-auth.css   account screens
+  nexa-auth.js    sign up / sign in / reset / account sheet (no dependencies)
+  index.html      original index.html + splash markup + the four tags
+icon/
+  icon.js         the app icon as a single SVG generator
+  render.js       renders all launcher, splash and web icons → icon/out/
+  out/            rendered assets (paths mirror the APK)
 build/
   build_apk.py    rebuilds and signs the APK from the original
   apkzip.py       exact ZIP rewriter + 4-byte zipalign
@@ -43,11 +130,13 @@ build/
 
 ## Option A: put it into the app's source project (recommended)
 
-1. Copy `web/nexa-fx.css` and `web/nexa-fx.js` into the Vite `public/` folder.
+1. Copy the four `web/nexa-*` files into the Vite `public/` folder.
 2. In the source `index.html` `<head>`, after the app's own stylesheet:
    ```html
    <link rel="stylesheet" href="./nexa-fx.css">
    <script defer src="./nexa-fx.js"></script>
+   <link rel="stylesheet" href="./nexa-auth.css">
+   <script defer src="./nexa-auth.js"></script>
    ```
    Also copy the `<div id="fx-splash">…</div>` block from `web/index.html` into
    `<body>`, right after `<div id="root">…</div>`.
@@ -57,7 +146,13 @@ build/
    exit: (d) => ({ opacity: 0, x: d === 0 ? 0 : d > 0 ? 18 : -18,
                    transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }),
    ```
-4. Run `npm run build && npx cap sync android` and build in Android Studio as usual,
+4. In the preferences sheet, change the copy "פרופיל מקומי" / "…אין צורך בחשבון."
+   (see `BUNDLE_PATCHES` in `build/build_apk.py` for the replacement text).
+5. Icons: copy `icon/out/res/*` into `android/app/src/main/res/`, dropping the
+   `-v4` suffix from the folder names (the APK's compiled names, e.g.
+   `mipmap-xxxhdpi-v4` → `mipmap-xxxhdpi`). Copy `icon/out/assets/public/*`
+   into `public/`.
+6. Run `npm run build && npx cap sync android` and build in Android Studio as usual,
    signed with **your** release key.
 
 ## Option B: rebuild the APK directly

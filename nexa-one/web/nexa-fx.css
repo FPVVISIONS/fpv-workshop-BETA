@@ -245,7 +245,7 @@ main a.bg-paper::after {
 /* Tap ripple overlay (positioned by JS over the pressed control) */
 .fx-ripple-host {
   position: fixed;
-  z-index: 70;
+  z-index: 120; /* above the account sheet (85) and sign-in overlay (90) */
   pointer-events: none;
   overflow: hidden;
 }

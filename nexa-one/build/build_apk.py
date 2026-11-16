@@ -36,6 +36,16 @@ BUNDLE_PATCHES = [
         'exit:e=>({opacity:0,x:e===0?0:e>0?18:-18})',
         'exit:e=>({opacity:0,x:e===0?0:e>0?18:-18,transition:{duration:.16,ease:[.4,0,1,1]}})',
     ),
+    # The original preferences sheet said "local profile — no account needed",
+    # which contradicts the new accounts layer (nexa-auth.js). Reword it.
+    (
+        'children:n.name||"פרופיל מקומי"',
+        'children:n.name||"העדפות אפליקציה"',
+    ),
+    (
+        'children:"נשמר רק במכשיר הזה. אין צורך בחשבון."',
+        'children:"ההעדפות נשמרות במכשיר הזה. את החשבון מנהלים ממסך החשבון."',
+    ),
 ]
 
 
@@ -49,21 +59,44 @@ def patch_bundle(src: bytes) -> bytes:
     return text.encode("utf-8")
 
 
+WEB_EXTRAS = ("nexa-fx.css", "nexa-fx.js", "nexa-auth.css", "nexa-auth.js")
+ICONS = os.path.join(HERE, "..", "icon", "out")  # rendered by icon/render.js
+
+
+def icon_overrides():
+    """APK path -> bytes for every rendered icon/splash asset that replaces an
+    existing entry (paths under icon/out mirror the APK layout)."""
+    out = {}
+    for root, _, files in os.walk(ICONS):
+        for f in files:
+            full = os.path.join(root, f)
+            rel = os.path.relpath(full, ICONS).replace(os.sep, "/")
+            if not rel.startswith("preview/"):
+                out[rel] = open(full, "rb").read()
+    return out
+
+
 def inject(entries):
     out, names = [], {e.name for e in entries}
-    web_files = {f: open(os.path.join(WEB, f), "rb").read() for f in ("index.html", "nexa-fx.css", "nexa-fx.js")}
+    web_files = {f: open(os.path.join(WEB, f), "rb").read() for f in ("index.html",) + WEB_EXTRAS}
+    icons = icon_overrides()
+    missing = sorted(set(icons) - names)
+    if missing:
+        raise SystemExit(f"icon assets with no matching APK entry: {missing}")
     for e in entries:
         if any(fnmatch.fnmatch(e.name, p) for p in SIG_FILES):
             continue
+        if e.name in icons:
+            out.append(make_entry(e.name, icons[e.name], like=e))
+            continue
         if e.name == PUBLIC + "index.html":
             out.append(make_entry(e.name, web_files["index.html"], like=e))
-            for extra in ("nexa-fx.css", "nexa-fx.js"):
+            for extra in WEB_EXTRAS:
                 if PUBLIC + extra not in names:
                     out.append(make_entry(PUBLIC + extra, web_files[extra], like=e))
             continue
-        if e.name in (PUBLIC + "nexa-fx.css", PUBLIC + "nexa-fx.js"):
-            base = e.name[len(PUBLIC):]
-            out.append(make_entry(e.name, web_files[base], like=e))
+        if e.name in tuple(PUBLIC + x for x in WEB_EXTRAS):
+            out.append(make_entry(e.name, web_files[e.name[len(PUBLIC):]], like=e))
             continue
         if fnmatch.fnmatch(e.name, PUBLIC + "assets/index-*.js"):
             import zlib
